@@ -13,5 +13,5 @@ type Result =
 service : {
   createTaxPayer: (text, text, text) -> (Result);
   getAllTaxPayers: () -> (vec TaxPayer) query;
-  searchTaxPayerByTID: (nat) -> (opt TaxPayer) query;
+  searchTaxPayerByTID: (nat) -> (vec TaxPayer) query;
 }

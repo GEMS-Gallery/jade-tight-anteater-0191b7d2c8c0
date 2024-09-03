@@ -9,7 +9,7 @@ export const idlFactory = ({ IDL }) => {
   return IDL.Service({
     'createTaxPayer' : IDL.Func([IDL.Text, IDL.Text, IDL.Text], [Result], []),
     'getAllTaxPayers' : IDL.Func([], [IDL.Vec(TaxPayer)], ['query']),
-    'searchTaxPayerByTID' : IDL.Func([IDL.Nat], [IDL.Opt(TaxPayer)], ['query']),
+    'searchTaxPayerByTID' : IDL.Func([IDL.Nat], [IDL.Vec(TaxPayer)], ['query']),
   });
 };
 export const init = ({ IDL }) => { return []; };

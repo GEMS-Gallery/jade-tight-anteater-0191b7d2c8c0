@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { backend } from 'declarations/backend';
-import { Container, Typography, Box, TextField, Button, CircularProgress } from '@mui/material';
+import { Container, Typography, Box, TextField, Button, CircularProgress, Alert } from '@mui/material';
 import DataTable from 'react-data-table-component';
 import { useForm, Controller } from 'react-hook-form';
 
@@ -15,6 +15,7 @@ const App: React.FC = () => {
   const [taxPayers, setTaxPayers] = useState<TaxPayer[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchTID, setSearchTID] = useState('');
+  const [searchError, setSearchError] = useState('');
   const { control, handleSubmit, reset } = useForm<Omit<TaxPayer, 'tid'>>();
 
   const fetchTaxPayers = async () => {
@@ -53,15 +54,23 @@ const App: React.FC = () => {
   const handleSearch = async () => {
     if (!searchTID) return;
     setLoading(true);
+    setSearchError('');
     try {
-      const result = await backend.searchTaxPayerByTID(BigInt(searchTID));
-      if (result) {
-        setTaxPayers([result]);
+      const tidNumber = Number(searchTID);
+      if (isNaN(tidNumber)) {
+        setSearchError('Invalid TID. Please enter a valid number.');
+        return;
+      }
+      const result = await backend.searchTaxPayerByTID(BigInt(tidNumber));
+      if (result.length > 0) {
+        setTaxPayers(result);
       } else {
         setTaxPayers([]);
+        setSearchError('No matching records found.');
       }
     } catch (error) {
       console.error('Error searching tax payer:', error);
+      setSearchError('An error occurred while searching. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -153,6 +162,11 @@ const App: React.FC = () => {
             <Button onClick={handleSearch} variant="contained" color="secondary" disabled={loading}>
               {loading ? <CircularProgress size={24} /> : 'Search'}
             </Button>
+            {searchError && (
+              <Alert severity="error" sx={{ mt: 2 }}>
+                {searchError}
+              </Alert>
+            )}
           </Box>
         </Box>
         <DataTable
@@ -162,6 +176,7 @@ const App: React.FC = () => {
           pagination
           progressPending={loading}
           progressComponent={<CircularProgress />}
+          noDataComponent={<Typography>No records found</Typography>}
         />
       </Box>
     </Container>

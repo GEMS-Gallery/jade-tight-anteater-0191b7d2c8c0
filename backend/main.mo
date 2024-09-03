@@ -1,4 +1,3 @@
-import Array "mo:base/Array";
 import Func "mo:base/Func";
 import Hash "mo:base/Hash";
 
@@ -8,6 +7,7 @@ import Nat "mo:base/Nat";
 import Result "mo:base/Result";
 import Option "mo:base/Option";
 import Iter "mo:base/Iter";
+import Array "mo:base/Array";
 
 actor {
   // Define the TaxPayer type
@@ -50,8 +50,11 @@ actor {
   };
 
   // Function to search for a TaxPayer by TID
-  public query func searchTaxPayerByTID(tid : Nat) : async ?TaxPayer {
-    taxPayers.get(tid)
+  public query func searchTaxPayerByTID(tid : Nat) : async [TaxPayer] {
+    switch (taxPayers.get(tid)) {
+      case (null) { [] };
+      case (?taxPayer) { [taxPayer] };
+    }
   };
 
   // Pre-upgrade hook to store the HashMap data
