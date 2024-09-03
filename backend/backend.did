@@ -1,6 +1,8 @@
+type Time = int;
 type TaxPayer = 
  record {
    address: text;
+   capitalGains: vec CapitalGain;
    firstName: text;
    lastName: text;
    tid: nat;
@@ -15,7 +17,13 @@ type Result =
    err: text;
    ok;
  };
+type CapitalGain = 
+ record {
+   amount: float64;
+   date: Time;
+ };
 service : {
+  addCapitalGain: (nat, Time, float64) -> (Result);
   createTaxPayer: (text, text, text) -> (Result_1);
   deleteTaxPayer: (nat) -> (Result);
   getAllTaxPayers: () -> (vec TaxPayer) query;

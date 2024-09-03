@@ -4,11 +4,17 @@ import { Container, Typography, Box, TextField, Button, CircularProgress, Alert,
 import DataTable from 'react-data-table-component';
 import { useForm, Controller } from 'react-hook-form';
 
+type CapitalGain = {
+  date: bigint;
+  amount: number;
+};
+
 type TaxPayer = {
   tid: bigint;
   firstName: string;
   lastName: string;
   address: string;
+  capitalGains: CapitalGain[];
 };
 
 const App: React.FC = () => {
@@ -18,7 +24,8 @@ const App: React.FC = () => {
   const [searchError, setSearchError] = useState('');
   const [editingTaxPayer, setEditingTaxPayer] = useState<TaxPayer | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const { control, handleSubmit, reset, setValue } = useForm<Omit<TaxPayer, 'tid'>>();
+  const [isCapitalGainDialogOpen, setIsCapitalGainDialogOpen] = useState(false);
+  const { control, handleSubmit, reset, setValue } = useForm<Omit<TaxPayer, 'tid' | 'capitalGains'> & { capitalGainDate: string; capitalGainAmount: number }>();
 
   const fetchTaxPayers = async () => {
     setLoading(true);
@@ -36,7 +43,7 @@ const App: React.FC = () => {
     fetchTaxPayers();
   }, []);
 
-  const onSubmit = async (data: Omit<TaxPayer, 'tid'>) => {
+  const onSubmit = async (data: Omit<TaxPayer, 'tid' | 'capitalGains'>) => {
     setLoading(true);
     try {
       const result = await backend.createTaxPayer(data.firstName, data.lastName, data.address);
@@ -86,7 +93,7 @@ const App: React.FC = () => {
     setIsEditDialogOpen(true);
   };
 
-  const handleUpdate = async (data: Omit<TaxPayer, 'tid'>) => {
+  const handleUpdate = async (data: Omit<TaxPayer, 'tid' | 'capitalGains'>) => {
     if (!editingTaxPayer) return;
     setLoading(true);
     try {
@@ -122,17 +129,48 @@ const App: React.FC = () => {
     }
   };
 
+  const handleAddCapitalGain = (taxPayer: TaxPayer) => {
+    setEditingTaxPayer(taxPayer);
+    setValue('capitalGainDate', '');
+    setValue('capitalGainAmount', 0);
+    setIsCapitalGainDialogOpen(true);
+  };
+
+  const handleCapitalGainSubmit = async (data: { capitalGainDate: string; capitalGainAmount: number }) => {
+    if (!editingTaxPayer) return;
+    setLoading(true);
+    try {
+      const result = await backend.addCapitalGain(
+        editingTaxPayer.tid,
+        BigInt(new Date(data.capitalGainDate).getTime() * 1000000), // Convert to nanoseconds
+        data.capitalGainAmount
+      );
+      if ('ok' in result) {
+        await fetchTaxPayers();
+        setIsCapitalGainDialogOpen(false);
+      } else {
+        console.error('Error adding capital gain:', result.err);
+      }
+    } catch (error) {
+      console.error('Error adding capital gain:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const columns = [
     { name: 'TID', selector: (row: TaxPayer) => Number(row.tid), sortable: true },
     { name: 'First Name', selector: (row: TaxPayer) => row.firstName, sortable: true },
     { name: 'Last Name', selector: (row: TaxPayer) => row.lastName, sortable: true },
     { name: 'Address', selector: (row: TaxPayer) => row.address, sortable: true },
+    { name: 'Capital Gains', selector: (row: TaxPayer) => row.capitalGains.length, sortable: true },
     {
       name: 'Actions',
       cell: (row: TaxPayer) => (
         <>
           <Button onClick={() => handleEdit(row)} color="primary" size="small">Edit</Button>
           <Button onClick={() => handleDelete(row.tid)} color="secondary" size="small">Delete</Button>
+          <Button onClick={() => handleAddCapitalGain(row)} color="info" size="small">Add Capital Gain</Button>
         </>
       ),
     },
@@ -292,6 +330,54 @@ const App: React.FC = () => {
           <Button onClick={() => setIsEditDialogOpen(false)}>Cancel</Button>
           <Button onClick={handleSubmit(handleUpdate)} color="primary">
             Update
+          </Button>
+        </DialogActions>
+      </Dialog>
+      <Dialog open={isCapitalGainDialogOpen} onClose={() => setIsCapitalGainDialogOpen(false)}>
+        <DialogTitle>Add Capital Gain</DialogTitle>
+        <DialogContent>
+          <form onSubmit={handleSubmit(handleCapitalGainSubmit)}>
+            <Controller
+              name="capitalGainDate"
+              control={control}
+              defaultValue=""
+              rules={{ required: 'Date is required' }}
+              render={({ field, fieldState: { error } }) => (
+                <TextField
+                  {...field}
+                  label="Date"
+                  type="date"
+                  fullWidth
+                  margin="normal"
+                  InputLabelProps={{ shrink: true }}
+                  error={!!error}
+                  helperText={error?.message}
+                />
+              )}
+            />
+            <Controller
+              name="capitalGainAmount"
+              control={control}
+              defaultValue={0}
+              rules={{ required: 'Amount is required', min: { value: 0, message: 'Amount must be positive' } }}
+              render={({ field, fieldState: { error } }) => (
+                <TextField
+                  {...field}
+                  label="Amount"
+                  type="number"
+                  fullWidth
+                  margin="normal"
+                  error={!!error}
+                  helperText={error?.message}
+                />
+              )}
+            />
+          </form>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setIsCapitalGainDialogOpen(false)}>Cancel</Button>
+          <Button onClick={handleSubmit(handleCapitalGainSubmit)} color="primary">
+            Add Capital Gain
           </Button>
         </DialogActions>
       </Dialog>
