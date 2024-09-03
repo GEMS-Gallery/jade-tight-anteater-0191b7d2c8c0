@@ -57,6 +57,31 @@ actor {
     }
   };
 
+  // Function to update a TaxPayer record
+  public func updateTaxPayer(tid : Nat, firstName : Text, lastName : Text, address : Text) : async Result.Result<(), Text> {
+    switch (taxPayers.get(tid)) {
+      case (null) { #err("TaxPayer not found") };
+      case (?existingTaxPayer) {
+        let updatedTaxPayer : TaxPayer = {
+          tid = existingTaxPayer.tid;
+          firstName = firstName;
+          lastName = lastName;
+          address = address;
+        };
+        taxPayers.put(tid, updatedTaxPayer);
+        #ok()
+      };
+    }
+  };
+
+  // Function to delete a TaxPayer record
+  public func deleteTaxPayer(tid : Nat) : async Result.Result<(), Text> {
+    switch (taxPayers.remove(tid)) {
+      case (null) { #err("TaxPayer not found") };
+      case (?_) { #ok() };
+    }
+  };
+
   // Pre-upgrade hook to store the HashMap data
   system func preupgrade() {
     taxPayerEntries := Iter.toArray(taxPayers.entries());

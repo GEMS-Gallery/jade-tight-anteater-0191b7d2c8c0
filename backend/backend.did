@@ -5,13 +5,20 @@ type TaxPayer =
    lastName: text;
    tid: nat;
  };
-type Result = 
+type Result_1 = 
  variant {
    err: text;
    ok: nat;
  };
+type Result = 
+ variant {
+   err: text;
+   ok;
+ };
 service : {
-  createTaxPayer: (text, text, text) -> (Result);
+  createTaxPayer: (text, text, text) -> (Result_1);
+  deleteTaxPayer: (nat) -> (Result);
   getAllTaxPayers: () -> (vec TaxPayer) query;
   searchTaxPayerByTID: (nat) -> (vec TaxPayer) query;
+  updateTaxPayer: (nat, text, text, text) -> (Result);
 }
