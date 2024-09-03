@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { backend } from 'declarations/backend';
-import { Container, Typography, Box, TextField, Button, CircularProgress, Alert, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material';
+import { Container, Typography, Box, TextField, Button, CircularProgress, Alert, Dialog, DialogTitle, DialogContent, DialogActions, Snackbar } from '@mui/material';
 import DataTable from 'react-data-table-component';
 import { useForm, Controller } from 'react-hook-form';
 
@@ -25,7 +25,10 @@ const App: React.FC = () => {
   const [editingTaxPayer, setEditingTaxPayer] = useState<TaxPayer | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isCapitalGainDialogOpen, setIsCapitalGainDialogOpen] = useState(false);
-  const { control, handleSubmit, reset, setValue } = useForm<Omit<TaxPayer, 'tid' | 'capitalGains'> & { capitalGainDate: string; capitalGainAmount: number }>();
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState('');
+  const { control: taxPayerControl, handleSubmit: handleTaxPayerSubmit, reset: resetTaxPayerForm } = useForm<Omit<TaxPayer, 'tid' | 'capitalGains'>>();
+  const { control: capitalGainControl, handleSubmit: handleCapitalGainSubmit, reset: resetCapitalGainForm } = useForm<{ capitalGainDate: string; capitalGainAmount: number }>();
 
   const fetchTaxPayers = async () => {
     setLoading(true);
@@ -34,6 +37,8 @@ const App: React.FC = () => {
       setTaxPayers(result);
     } catch (error) {
       console.error('Error fetching tax payers:', error);
+      setSnackbarMessage('Error fetching tax payers');
+      setSnackbarOpen(true);
     } finally {
       setLoading(false);
     }
@@ -43,18 +48,24 @@ const App: React.FC = () => {
     fetchTaxPayers();
   }, []);
 
-  const onSubmit = async (data: Omit<TaxPayer, 'tid' | 'capitalGains'>) => {
+  const onSubmitTaxPayer = async (data: Omit<TaxPayer, 'tid' | 'capitalGains'>) => {
     setLoading(true);
     try {
       const result = await backend.createTaxPayer(data.firstName, data.lastName, data.address);
       if ('ok' in result) {
         await fetchTaxPayers();
-        reset();
+        resetTaxPayerForm();
+        setSnackbarMessage('TaxPayer created successfully');
+        setSnackbarOpen(true);
       } else {
         console.error('Error creating tax payer:', result.err);
+        setSnackbarMessage('Error creating tax payer');
+        setSnackbarOpen(true);
       }
     } catch (error) {
       console.error('Error creating tax payer:', error);
+      setSnackbarMessage('Error creating tax payer');
+      setSnackbarOpen(true);
     } finally {
       setLoading(false);
     }
@@ -87,9 +98,6 @@ const App: React.FC = () => {
 
   const handleEdit = (taxPayer: TaxPayer) => {
     setEditingTaxPayer(taxPayer);
-    setValue('firstName', taxPayer.firstName);
-    setValue('lastName', taxPayer.lastName);
-    setValue('address', taxPayer.address);
     setIsEditDialogOpen(true);
   };
 
@@ -101,11 +109,17 @@ const App: React.FC = () => {
       if ('ok' in result) {
         await fetchTaxPayers();
         setIsEditDialogOpen(false);
+        setSnackbarMessage('TaxPayer updated successfully');
+        setSnackbarOpen(true);
       } else {
         console.error('Error updating tax payer:', result.err);
+        setSnackbarMessage('Error updating tax payer');
+        setSnackbarOpen(true);
       }
     } catch (error) {
       console.error('Error updating tax payer:', error);
+      setSnackbarMessage('Error updating tax payer');
+      setSnackbarOpen(true);
     } finally {
       setLoading(false);
     }
@@ -118,11 +132,17 @@ const App: React.FC = () => {
         const result = await backend.deleteTaxPayer(tid);
         if ('ok' in result) {
           await fetchTaxPayers();
+          setSnackbarMessage('TaxPayer deleted successfully');
+          setSnackbarOpen(true);
         } else {
           console.error('Error deleting tax payer:', result.err);
+          setSnackbarMessage('Error deleting tax payer');
+          setSnackbarOpen(true);
         }
       } catch (error) {
         console.error('Error deleting tax payer:', error);
+        setSnackbarMessage('Error deleting tax payer');
+        setSnackbarOpen(true);
       } finally {
         setLoading(false);
       }
@@ -131,12 +151,11 @@ const App: React.FC = () => {
 
   const handleAddCapitalGain = (taxPayer: TaxPayer) => {
     setEditingTaxPayer(taxPayer);
-    setValue('capitalGainDate', '');
-    setValue('capitalGainAmount', 0);
+    resetCapitalGainForm();
     setIsCapitalGainDialogOpen(true);
   };
 
-  const handleCapitalGainSubmit = async (data: { capitalGainDate: string; capitalGainAmount: number }) => {
+  const onSubmitCapitalGain = async (data: { capitalGainDate: string; capitalGainAmount: number }) => {
     if (!editingTaxPayer) return;
     setLoading(true);
     try {
@@ -148,11 +167,17 @@ const App: React.FC = () => {
       if ('ok' in result) {
         await fetchTaxPayers();
         setIsCapitalGainDialogOpen(false);
+        setSnackbarMessage('Capital gain added successfully');
+        setSnackbarOpen(true);
       } else {
         console.error('Error adding capital gain:', result.err);
+        setSnackbarMessage('Error adding capital gain');
+        setSnackbarOpen(true);
       }
     } catch (error) {
       console.error('Error adding capital gain:', error);
+      setSnackbarMessage('Error adding capital gain');
+      setSnackbarOpen(true);
     } finally {
       setLoading(false);
     }
@@ -187,10 +212,10 @@ const App: React.FC = () => {
             <Typography variant="h6" gutterBottom>
               Add New TaxPayer
             </Typography>
-            <form onSubmit={handleSubmit(onSubmit)}>
+            <form onSubmit={handleTaxPayerSubmit(onSubmitTaxPayer)}>
               <Controller
                 name="firstName"
-                control={control}
+                control={taxPayerControl}
                 defaultValue=""
                 rules={{ required: 'First name is required' }}
                 render={({ field, fieldState: { error } }) => (
@@ -206,7 +231,7 @@ const App: React.FC = () => {
               />
               <Controller
                 name="lastName"
-                control={control}
+                control={taxPayerControl}
                 defaultValue=""
                 rules={{ required: 'Last name is required' }}
                 render={({ field, fieldState: { error } }) => (
@@ -222,7 +247,7 @@ const App: React.FC = () => {
               />
               <Controller
                 name="address"
-                control={control}
+                control={taxPayerControl}
                 defaultValue=""
                 rules={{ required: 'Address is required' }}
                 render={({ field, fieldState: { error } }) => (
@@ -275,11 +300,11 @@ const App: React.FC = () => {
       <Dialog open={isEditDialogOpen} onClose={() => setIsEditDialogOpen(false)}>
         <DialogTitle>Edit TaxPayer</DialogTitle>
         <DialogContent>
-          <form onSubmit={handleSubmit(handleUpdate)}>
+          <form onSubmit={handleTaxPayerSubmit(handleUpdate)}>
             <Controller
               name="firstName"
-              control={control}
-              defaultValue=""
+              control={taxPayerControl}
+              defaultValue={editingTaxPayer?.firstName || ''}
               rules={{ required: 'First name is required' }}
               render={({ field, fieldState: { error } }) => (
                 <TextField
@@ -294,8 +319,8 @@ const App: React.FC = () => {
             />
             <Controller
               name="lastName"
-              control={control}
-              defaultValue=""
+              control={taxPayerControl}
+              defaultValue={editingTaxPayer?.lastName || ''}
               rules={{ required: 'Last name is required' }}
               render={({ field, fieldState: { error } }) => (
                 <TextField
@@ -310,8 +335,8 @@ const App: React.FC = () => {
             />
             <Controller
               name="address"
-              control={control}
-              defaultValue=""
+              control={taxPayerControl}
+              defaultValue={editingTaxPayer?.address || ''}
               rules={{ required: 'Address is required' }}
               render={({ field, fieldState: { error } }) => (
                 <TextField
@@ -328,7 +353,7 @@ const App: React.FC = () => {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setIsEditDialogOpen(false)}>Cancel</Button>
-          <Button onClick={handleSubmit(handleUpdate)} color="primary">
+          <Button onClick={handleTaxPayerSubmit(handleUpdate)} color="primary">
             Update
           </Button>
         </DialogActions>
@@ -336,10 +361,10 @@ const App: React.FC = () => {
       <Dialog open={isCapitalGainDialogOpen} onClose={() => setIsCapitalGainDialogOpen(false)}>
         <DialogTitle>Add Capital Gain</DialogTitle>
         <DialogContent>
-          <form onSubmit={handleSubmit(handleCapitalGainSubmit)}>
+          <form onSubmit={handleCapitalGainSubmit(onSubmitCapitalGain)}>
             <Controller
               name="capitalGainDate"
-              control={control}
+              control={capitalGainControl}
               defaultValue=""
               rules={{ required: 'Date is required' }}
               render={({ field, fieldState: { error } }) => (
@@ -357,7 +382,7 @@ const App: React.FC = () => {
             />
             <Controller
               name="capitalGainAmount"
-              control={control}
+              control={capitalGainControl}
               defaultValue={0}
               rules={{ required: 'Amount is required', min: { value: 0, message: 'Amount must be positive' } }}
               render={({ field, fieldState: { error } }) => (
@@ -376,11 +401,17 @@ const App: React.FC = () => {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setIsCapitalGainDialogOpen(false)}>Cancel</Button>
-          <Button onClick={handleSubmit(handleCapitalGainSubmit)} color="primary">
+          <Button onClick={handleCapitalGainSubmit(onSubmitCapitalGain)} color="primary">
             Add Capital Gain
           </Button>
         </DialogActions>
       </Dialog>
+      <Snackbar
+        open={snackbarOpen}
+        autoHideDuration={6000}
+        onClose={() => setSnackbarOpen(false)}
+        message={snackbarMessage}
+      />
     </Container>
   );
 };
